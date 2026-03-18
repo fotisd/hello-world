@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top Places Finder</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.8; font-size: 1rem; }
+        .controls {
+            max-width: 700px;
+            margin: 2rem auto;
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        .controls label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .controls input {
+            width: 100%;
+            padding: 0.7rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s;
+        }
+        .controls input:focus { outline: none; border-color: #0f3460; }
+        .btn {
+            background: linear-gradient(135deg, #0f3460, #1a1a2e);
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .api-help {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: -0.7rem;
+            margin-bottom: 1rem;
+        }
+        .api-help a { color: #0f3460; }
+        .results {
+            max-width: 900px;
+            margin: 0 auto 3rem;
+            padding: 0 1rem;
+        }
+        .category {
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .category-header {
+            padding: 1rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .cat-restaurants .category-header { background: #fff3e0; color: #e65100; }
+        .cat-hotels .category-header { background: #e3f2fd; color: #1565c0; }
+        .cat-bars .category-header { background: #fce4ec; color: #c62828; }
+        .cat-sights .category-header { background: #e8f5e9; color: #2e7d32; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            text-align: left;
+            padding: 0.7rem 1rem;
+            background: #fafafa;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #888;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        td {
+            padding: 0.7rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9rem;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f8f9ff; }
+        .rank {
+            font-weight: 700;
+            color: #0f3460;
+            width: 40px;
+        }
+        .rating {
+            font-weight: 700;
+            color: #f4a623;
+        }
+        .stars { color: #f4a623; font-size: 0.85rem; }
+        .reviews { color: #888; font-size: 0.85rem; }
+        .place-name { font-weight: 600; }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #888;
+        }
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #0f3460;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 0.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .error {
+            background: #fff3f3;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem auto;
+            max-width: 700px;
+        }
+        .progress-bar {
+            max-width: 700px;
+            margin: 1rem auto;
+            background: #e0e0e0;
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0f3460, #1a1a2e);
+            border-radius: 8px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+        .progress-text {
+            max-width: 700px;
+            margin: 0.5rem auto;
+            font-size: 0.85rem;
+            color: #888;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Top Places Finder</h1>
+        <p>Find the best restaurants, hotels, bars & sights in any city</p>
+    </div>
+
+    <div class="controls">
+        <label for="apiKey">Google Maps API Key</label>
+        <input type="password" id="apiKey" placeholder="Paste your API key here...">
+        <p class="api-help">
+            Don't have one? <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Get it here</a>
+            — enable <strong>Places API</strong> and <strong>Geocoding API</strong>
+        </p>
+
+        <label for="city">City</label>
+        <input type="text" id="city" placeholder="e.g. Paris, New York, Tokyo..." value="Paris">
+
+        <button class="btn" id="searchBtn" onclick="startSearch()">Search Top Places</button>
+    </div>
+
+    <div class="progress-bar" id="progressBar" style="display:none">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text" id="progressText" style="display:none"></div>
+
+    <div class="results" id="results"></div>
+
+    <div id="map" style="display:none"></div>
+
+    <script>
+        let map, service, geocoder;
+        let apiLoaded = false;
+
+        const CATEGORIES = [
+            { key: 'restaurants', label: 'Top 15 Restaurants', icon: '🍽️', type: 'restaurant', keyword: 'restaurant', minReviews: 200, topN: 15 },
+            { key: 'hotels', label: 'Top 15 Hotels', icon: '🏨', type: 'lodging', keyword: 'hotel', minReviews: 200, topN: 15 },
+            { key: 'bars', label: 'Top 15 Bars', icon: '🍸', type: 'bar', keyword: 'bar', minReviews: 200, topN: 15 },
+            { key: 'sights', label: 'Top 15 Sights', icon: '🏛️', type: 'tourist_attraction', keyword: 'tourist attraction', minReviews: 0, topN: 15 },
+        ];
+
+        function loadGoogleMaps(apiKey) {
+            return new Promise((resolve, reject) => {
+                if (apiLoaded) { resolve(); return; }
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+                script.onload = () => { apiLoaded = true; resolve(); };
+                script.onerror = () => reject(new Error('Failed to load Google Maps. Check your API key.'));
+                document.head.appendChild(script);
+            });
+        }
+
+        function geocodeCity(city) {
+            return new Promise((resolve, reject) => {
+                geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: city }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                        resolve(results[0].geometry.location);
+                    } else {
+                        reject(new Error(`Could not find city "${city}". Status: ${status}`));
+                    }
+                });
+            });
+        }
+
+        function searchNearby(location, type, keyword) {
+            return new Promise((resolve) => {
+                const request = {
+                    location: location,
+                    radius: 15000,
+                    type: type,
+                    keyword: keyword,
+                };
+                service.nearbySearch(request, (results, status, pagination) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK) {
+                        const places = results || [];
+                        if (pagination && pagination.hasNextPage) {
+                            setTimeout(() => {
+                                pagination.nextPage((moreResults, moreStatus, morePagination) => {
+                                    if (moreStatus === google.maps.places.PlacesServiceStatus.OK) {
+                                        const combined = places.concat(moreResults || []);
+                                        if (morePagination && morePagination.hasNextPage) {
+                                            setTimeout(() => {
+                                                morePagination.nextPage((evenMore, evenMoreStatus) => {
+                                                    if (evenMoreStatus === google.maps.places.PlacesServiceStatus.OK) {
+                                                        resolve(combined.concat(evenMore || []));
+                                                    } else {
+                                                        resolve(combined);
+                                                    }
+                                                });
+                                            }, 2000);
+                                        } else {
+                                            resolve(combined);
+                                        }
+                                    } else {
+                                        resolve(places);
+                                    }
+                                });
+                            }, 2000);
+                        } else {
+                            resolve(places);
+                        }
+                    } else {
+                        resolve([]);
+                    }
+                });
+            });
+        }
+
+        function filterAndRank(places, minReviews, topN) {
+            return places
+                .filter(p => (p.user_ratings_total || 0) >= minReviews)
+                .sort((a, b) => {
+                    const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                    if (ratingDiff !== 0) return ratingDiff;
+                    return (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
+                })
+                .slice(0, topN);
+        }
+
+        function renderStars(rating) {
+            const full = Math.floor(rating);
+            const half = rating - full >= 0.5 ? 1 : 0;
+            return '★'.repeat(full) + (half ? '½' : '') + '☆'.repeat(5 - full - half);
+        }
+
+        function renderCategory(cat, places) {
+            if (places.length === 0) {
+                return `
+                    <div class="category cat-${cat.key}">
+                        <div class="category-header">${cat.icon} ${cat.label}</div>
+                        <div style="padding:1.5rem;text-align:center;color:#888;">
+                            No places found with enough reviews. Try a larger city.
+                        </div>
+                    </div>`;
+            }
+
+            const rows = places.map((p, i) => `
+                <tr>
+                    <td class="rank">${i + 1}</td>
+                    <td class="place-name">${p.name}</td>
+                    <td>
+                        <span class="rating">${(p.rating || 0).toFixed(1)}</span>
+                        <span class="stars">${renderStars(p.rating || 0)}</span>
+                    </td>
+                    <td class="reviews">${(p.user_ratings_total || 0).toLocaleString()} reviews</td>
+                    <td>${p.vicinity || ''}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="category cat-${cat.key}">
+                    <div class="category-header">${cat.icon} ${cat.label}</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Name</th>
+                                <th>Rating</th>
+                                <th>Reviews</th>
+                                <th>Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        function setProgress(pct, text) {
+            document.getElementById('progressBar').style.display = 'block';
+            document.getElementById('progressText').style.display = 'block';
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressText').textContent = text;
+        }
+
+        async function startSearch() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const resultsDiv = document.getElementById('results');
+            const btn = document.getElementById('searchBtn');
+
+            if (!apiKey) { alert('Please enter your Google Maps API key.'); return; }
+            if (!city) { alert('Please enter a city name.'); return; }
+
+            btn.disabled = true;
+            btn.textContent = 'Searching...';
+            resultsDiv.innerHTML = '';
+
+            try {
+                setProgress(5, 'Loading Google Maps...');
+                await loadGoogleMaps(apiKey);
+
+                setProgress(15, `Finding ${city} on the map...`);
+                const location = await geocodeCity(city);
+
+                // Initialize map and Places service
+                const mapDiv = document.getElementById('map');
+                map = new google.maps.Map(mapDiv, { center: location, zoom: 13 });
+                service = new google.maps.places.PlacesService(map);
+
+                let html = '';
+                for (let i = 0; i < CATEGORIES.length; i++) {
+                    const cat = CATEGORIES[i];
+                    const pct = 20 + (i * 20);
+                    setProgress(pct, `Searching for ${cat.label.toLowerCase()}...`);
+
+                    const raw = await searchNearby(location, cat.type, cat.keyword);
+                    const top = filterAndRank(raw, cat.minReviews, cat.topN);
+                    html += renderCategory(cat, top);
+                    resultsDiv.innerHTML = html;
+                }
+
+                setProgress(100, 'Done!');
+                setTimeout(() => {
+                    document.getElementById('progressBar').style.display = 'none';
+                    document.getElementById('progressText').style.display = 'none';
+                }, 1500);
+
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="error"><strong>Error:</strong> ${err.message}</div>`;
+                document.getElementById('progressBar').style.display = 'none';
+                document.getElementById('progressText').style.display = 'none';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Search Top Places';
+        }
+
+        // Allow pressing Enter in the city field
+        document.getElementById('city').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') startSearch();
+        });
+    </script>
+</body>
+</html>
